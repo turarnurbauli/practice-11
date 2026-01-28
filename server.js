@@ -38,7 +38,15 @@ const Item = mongoose.models.Item || mongoose.model('Item', itemSchema);
 
 // Routes
 app.get('/', (req, res) => {
-  res.json({ message: 'Practice 11 API is running' });
+  res.json({ message: 'Practice 11 API is running (updated)' });
+});
+
+// GET /version
+app.get('/version', (req, res) => {
+  res.json({
+    version: '1.1',
+    updatedAt: '2026-01-28',
+  });
 });
 
 // GET /api/items
