@@ -9,6 +9,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Simple API key protection middleware
+const apiKey = process.env.API_KEY;
+
+function requireApiKey(req, res, next) {
+  // Only protect if an API_KEY is configured
+  if (!apiKey) {
+    return next();
+  }
+
+  const providedKey = req.header('x-api-key');
+
+  if (!providedKey || providedKey !== apiKey) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  next();
+}
+
 // Environment variables
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
@@ -73,7 +91,7 @@ app.get('/api/items/:id', async (req, res) => {
 });
 
 // POST /api/items
-app.post('/api/items', async (req, res) => {
+app.post('/api/items', requireApiKey, async (req, res) => {
   try {
     const item = new Item(req.body);
     await item.save();
@@ -84,7 +102,7 @@ app.post('/api/items', async (req, res) => {
 });
 
 // PUT /api/items/:id
-app.put('/api/items/:id', async (req, res) => {
+app.put('/api/items/:id', requireApiKey, async (req, res) => {
   try {
     const item = await Item.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -99,8 +117,30 @@ app.put('/api/items/:id', async (req, res) => {
   }
 });
 
+// PATCH /api/items/:id (partial update)
+app.patch('/api/items/:id', requireApiKey, async (req, res) => {
+  try {
+    const item = await Item.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    res.json(item);
+  } catch (err) {
+    res.status(400).json({ error: 'Invalid ID or validation error', details: err.message });
+  }
+});
+
 // DELETE /api/items/:id
-app.delete('/api/items/:id', async (req, res) => {
+app.delete('/api/items/:id', requireApiKey, async (req, res) => {
   try {
     const item = await Item.findByIdAndDelete(req.params.id);
     if (!item) {
